@@ -2,7 +2,7 @@
 
 **Direct State Mutation Modeling — predicting structured changes instead of generating a textual answer.**
 
-> **Status: Research proposal / pre-implementation.** This repository currently defines the research direction, experiments, and handoff plan. No trained model, benchmark result, working API, or setup command is claimed to exist yet.
+> **Status: Phase 0 executable research baseline.** The repository now has a deterministic synthetic generator, a schema-aware dry-run patch oracle, split-integrity checks, a controlled rule baseline, tests, CI, and verified CPU commands. It has **no trained neural model, tokenizer, checkpoint, API, or GPU benchmark**. The only measured result is a rule baseline on its own controlled synthetic grammar; it is not a learned-model result or a generalization claim.
 
 ## 1. Why Patchformer?
 
@@ -241,48 +241,40 @@ A model proposes changes; an independent application decides whether to apply th
 - Log redacted inputs, predictions, validation results, and model versions for auditability.
 - Never run predicted SQL, shell commands, or arbitrary code directly.
 
-## 8. Proposed project layout (not yet created)
+## 8. Implemented Phase 0 layout
 
 ~~~text
 patchformer/
-├── README.md
-├── pyproject.toml
-├── configs/
-│   ├── data/
-│   ├── model/
-│   └── train/
+├── pyproject.toml                    # Python package, pinned dev/CUDA extras, tool config
 ├── src/patchformer/
-│   ├── data/            # synthetic generator, datasets, splits
-│   ├── tokenizer/       # input representation
-│   ├── model/           # encoder and prediction heads
-│   ├── training/        # train/eval/checkpointing
-│   ├── patch/           # JSON Patch serializer and validator
-│   ├── inference/       # predict and dry-run apply
-│   └── api/             # optional API after research MVP
-├── scripts/
-├── tests/
-├── benchmarks/
+│   ├── data/                         # deterministic schemas, generator, split integrity
+│   ├── patch/oracle.py               # dry-run V0 JSON Patch validator/application oracle
+│   ├── baseline/deterministic.py     # controlled rule baseline
+│   ├── evaluation.py                 # final-state and structured metrics
+│   └── cli.py                        # generate, evaluate, smoke, cuda-smoke
+├── tests/                            # oracle, data integrity, metric, and CLI tests
 ├── docs/
 │   ├── architecture.md
 │   ├── data.md
 │   ├── experiments.md
 │   └── decisions.md
-└── .github/workflows/
+└── .github/workflows/ci.yml
 ~~~
 
-This tree is a **target layout**, not a statement that files already exist.
+The project deliberately does **not** include `model/`, `training/`, `tokenizer/`, API, or checkpoint code yet. Those are later gates, not implied by the package layout.
 
 ## 9. Research roadmap and gates
 
-### Phase 0 — reproducible foundation
+### Phase 0 — reproducible foundation (**implemented on CPU**)
 
-- Set up Python environment, dependency locking, format/lint/type checks, pytest, and CI.
-- Detect CUDA and verify GPU operation.
-- Implement schema-aware JSON Patch oracle, JSON Pointer tests, and dry-run application.
-- Implement reproducible synthetic generator and isolated evaluation splits.
-- Produce a documented deterministic baseline.
+- [x] Python package with exact development and optional CUDA dependency versions, Ruff, pytest, and GitHub Actions CI.
+- [x] Schema-aware V0 JSON Patch oracle, JSON Pointer escaping tests, and dry-run application.
+- [x] Deterministic synthetic generator with executable labels and isolated schema/domain/template splits.
+- [x] Documented conservative deterministic baseline and final-state evaluation.
+- [x] Fresh-clone CPU commands for dataset generation, evaluation, linting, tests, and CPU smoke checks.
+- [ ] CUDA execution: a command is implemented, but it has not been verified on CUDA hardware in this CPU-only environment.
 
-**Exit gate:** a fresh clone can reproduce a tiny dataset and baseline evaluation with one documented command each.
+**Exit gate:** satisfied for the small CPU fixture. `python -m patchformer smoke` generates, validates, evaluates, and reports a reproducible fingerprint. This gate establishes plumbing only; it does not establish ML quality.
 
 ### Phase 1 — first trainable model
 
@@ -310,22 +302,47 @@ This tree is a **target layout**, not a statement that files already exist.
 
 No dates or completion promises are attached to these gates.
 
-## 10. Environment and setup expectations
+## 10. Verified Phase 0 setup and commands
 
-Target development environment: Linux or WSL2 with a CUDA-capable NVIDIA GPU, ideally RTX 5090 32 GB.
+### CPU baseline (verified)
 
-Suggested stack: Python 3.11+, PyTorch with a CUDA build compatible with the installed driver/GPU, `uv` or equivalent dependency manager, `pytest`, `ruff`, Hugging Face `datasets` and `tokenizers`.
+Requirements: Python 3.11 or newer and `pip`. The core package has no runtime third-party dependency; development tools are pinned in `pyproject.toml`.
 
-**The repository is not runnable yet.** After Phase 0, replace this section with *verified* fresh-clone steps including:
+~~~bash
+python -m venv .venv
+. .venv/bin/activate
+python -m pip install --upgrade pip==26.0.1
+python -m pip install -e ".[dev]"
 
-- OS / GPU / driver checks and compatibility notes.
-- Actual dependency installation commands and pinned versions.
-- Commands to generate a small fixture dataset, run tests, train a tiny model, evaluate, and inspect predictions.
-- CPU smoke-test mode and GPU performance mode.
-- Paths for checkpoints, logs, experiment configs, and cached datasets.
-- Troubleshooting for CUDA/VRAM issues.
+python -m pytest
+python -m ruff check .
+python -m ruff format --check .
 
-Do not add plausible-looking commands without implementing and testing them.
+python -m patchformer generate \
+  --output data/generated/phase0.jsonl \
+  --examples-per-split 100 \
+  --seed 20261118
+python -m patchformer evaluate --data data/generated/phase0.jsonl --split test
+python -m patchformer smoke \
+  --output data/generated/phase0-smoke.jsonl \
+  --examples-per-split 10 \
+  --seed 20261118
+~~~
+
+Generated data, checkpoints, metrics, and experiment artifacts are ignored by Git. `smoke` validates generation/split integrity and evaluates the controlled baseline. See `docs/experiments.md` for the exact measured CPU run and its limitations.
+
+### CUDA smoke check (implemented, not verified here)
+
+CUDA is optional and not required for Phase 0. On a machine with an NVIDIA driver and a PyTorch CUDA wheel compatible with that driver/GPU:
+
+~~~bash
+python -m pip install -e ".[dev,cuda]"
+python -m patchformer cuda-smoke
+~~~
+
+A successful command prints the PyTorch version, device name, CUDA runtime, and a finite tensor checksum. It exits with a clear unavailable status when PyTorch or CUDA is absent. The agent environment used for Phase 0 was CPU-only, so no CUDA success claim is made. Consult the PyTorch installation selector for platform/driver compatibility before changing the pinned optional dependency.
+
+There is no train command, model configuration, checkpoint path, or GPU throughput result yet. Do not add plausible-looking training commands until the corresponding implementation and test exist.
 
 ## 11. Instructions for the next AI coding agent
 
@@ -347,9 +364,9 @@ Operating rules:
 10. Update this README and `docs/experiments.md` with **what is implemented, what was measured, what failed, and what comes next**. Record significant design choices in `docs/decisions.md`.
 11. Work in small, reviewable changes. Do not fabricate dataset rights, performance results, references, or successful runs.
 
-### Recommended first development request
+### Recommended next development request
 
-> Inspect the repository, then implement **Phase 0 only**. Create a minimal Python project with pinned dependencies; deterministic synthetic JSON-state/instruction/patch examples; an independent JSON Patch validation/application oracle; train/validation/test splits with schema- and template-held-out tests; a trivial deterministic baseline; unit tests; and verified CPU and CUDA smoke-test instructions. Do not implement the large neural network or API yet. Document actual commands, results, and limitations in README.md.
+> Preserve the Phase 0 oracle and split contracts, then implement **only the smallest Phase 1 learned baseline**: a randomly initialized encoder with structured operation/path/value/abstention heads, a tiny intentional-overfit test, checkpoint save/reload, and held-out evaluation through the existing dry-run oracle. Do not add an API, production executor, pretrained comparison, or broad model scale-up in the same change. Document seed, parameter count, hardware, commands, results, failures, and limitations without presenting synthetic-template accuracy as generalization.
 
 ### What to report at the end of every AI work session
 

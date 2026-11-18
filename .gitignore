@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Generated research artefacts (small fixtures belong in tests/fixtures/)
+data/generated/
+artifacts/
+checkpoints/
+metrics/
+wandb/
+
+# Editors and OS
+.DS_Store
+.vscode/
+.idea/
