@@ -270,7 +270,14 @@ patchformer/
 └── .github/workflows/
 ~~~
 
-This tree is a **target layout**, not a statement that files already exist.
+This tree is a **target layout**, not a statement that files already exist. The initial implementation currently includes only `src/patchformer/patch.py`, a dependency-free JSON-object patch oracle for `add`, `remove`, and `replace`; arrays and root-pointer edits are intentionally unsupported. It validates JSON Pointer escaping, returns a deep-copied result, and does not mutate the input state. Tests cover supported operations, invalid paths, escaping, and input preservation. This is an oracle foundation, not yet a full Phase 0 data generator or benchmark.
+
+Run the focused test suite from a fresh checkout with:
+
+~~~sh
+python -m pip install -e '.[test]'
+python -m pytest
+~~~
 
 ## 9. Research roadmap and gates
 
