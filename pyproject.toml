@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools==82.0.1"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "patchformer"
+version = "0.1.0"
+description = "Reproducible research baseline for direct structured state mutation prediction"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Proprietary / not yet selected" }
+authors = [{ name = "Patchformer contributors" }]
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+  "pytest==9.2.0",
+  "ruff==0.17.5",
+]
+cuda = [
+  "torch==2.15.0",
+]
+
+[project.scripts]
+patchformer = "patchformer.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
